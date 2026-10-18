@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "run": {
+    "job_id": "60000000-0000-4000-8000-000000000001",
+    "step_id": "70000000-0000-4000-8000-000000000001",
+    "pipeline_version": "0.1.0",
+    "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "scope": {
+    "customer_id": "10000000-0000-4000-8000-000000000001",
+    "chat_group_id": "20000000-0000-4000-8000-000000000001"
+  },
+  "mode": "both",
+  "issue": {
+    "issue_id": "50000000-0000-4000-8000-000000000001",
+    "version": 1,
+    "message_version": 1,
+    "title": "DemoRecord 截止日期字段咨询",
+    "input_complete": true
+  },
+  "participants": [
+    {
+      "participant_id": "30000000-0000-4000-8000-000000000001",
+      "display_name": "客户甲",
+      "role": "customer"
+    },
+    {
+      "participant_id": "30000000-0000-4000-8000-000000000002",
+      "display_name": "客服乙",
+      "role": "support"
+    }
+  ],
+  "allowed_message_ids": [
+    "40000000-0000-4000-8000-000000000001",
+    "40000000-0000-4000-8000-000000000002"
+  ],
+  "messages": [
+    {
+      "message_id": "40000000-0000-4000-8000-000000000001",
+      "participant_id": "30000000-0000-4000-8000-000000000001",
+      "sent_at": "2026-07-13T09:00:00+08:00",
+      "raw_text": "示例表 DemoRecord 的截止日期取哪个字段？",
+      "body_text": "示例表 DemoRecord 的截止日期取哪个字段？",
+      "quoted_text": "",
+      "direct_body_spans": [
+        {
+          "start": 0,
+          "end": 26
+        }
+      ],
+      "reply_to_message_id": null,
+      "has_nontext": false,
+      "parse_warnings": []
+    },
+    {
+      "message_id": "40000000-0000-4000-8000-000000000002",
+      "participant_id": "30000000-0000-4000-8000-000000000002",
+      "sent_at": "2026-07-14T10:00:00+08:00",
+      "raw_text": "DemoRecord 的 EndDate 表示截止日期。",
+      "body_text": "DemoRecord 的 EndDate 表示截止日期。",
+      "quoted_text": "",
+      "direct_body_spans": [
+        {
+          "start": 0,
+          "end": 28
+        }
+      ],
+      "reply_to_message_id": "40000000-0000-4000-8000-000000000001",
+      "has_nontext": false,
+      "parse_warnings": []
+    }
+  ],
+  "current_ticket": null,
+  "related_qa": []
+}

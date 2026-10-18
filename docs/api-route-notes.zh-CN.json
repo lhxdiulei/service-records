@@ -1,0 +1,733 @@
+{
+  "DELETE /api/v1/records/{record_kind}/{record_id}": {
+    "summary": "可恢复地删除记录",
+    "tag": "删除与恢复",
+    "description": "记录删除状态，保留原文、证据和历史；不物理删除业务数据。",
+    "access": "非草稿仅 admin；ticket_draft、qa_draft 可由 admin 或该草稿 created_by 用户操作；均须满足客户范围。",
+    "version": "必需；使用目标记录的 delete_version（尚无删除记录时为 0），不要使用业务 version。",
+    "response": "{ok:true,is_deleted:true,delete_version}；delete_version 为更新后的删除状态版本。",
+    "notes": [
+      "record_kind 仅支持 message、import、ticket、qa、ticket_draft、qa_draft。",
+      "草稿仅允许 draft、rejected、in_review；正式与历史版本不能当作草稿删除。",
+      "删除导入文件会使其消息一同不可用；消息或文件的删除会影响来源快照及待审核修订。",
+      "is_deleted 可能包含父级删除影响；具体删除记录用其自身 delete_version。"
+    ],
+    "parameters": {
+      "record_kind": "记录类型；草稿类型的 record_id 是修订 UUID。",
+      "record_id": "目标记录 UUID。"
+    }
+  },
+  "POST /api/v1/records/{record_kind}/{record_id}/restore": {
+    "summary": "恢复已删除记录",
+    "tag": "删除与恢复",
+    "description": "撤销对应记录的软删除标记，保留删除和恢复审计。",
+    "access": "非草稿仅 admin；草稿可由 admin 或 created_by 用户恢复，且须满足客户范围和可恢复草稿状态。",
+    "version": "必需；使用目标记录最新 delete_version。",
+    "response": "{ok:true,is_deleted:false,delete_version}；表示已恢复，delete_version 为更新后的删除状态版本。",
+    "notes": [
+      "record_kind 取值同删除接口。",
+      "恢复消息前必须先恢复其所属文件；恢复草稿前父工单或 QA 必须可用。",
+      "状态已改变或重复恢复返回 409；恢复不会自动提交审核或重新调用模型。"
+    ],
+    "parameters": {
+      "record_kind": "记录类型：message 消息、import 导入文件、ticket 工单、qa 问答、ticket_draft 工单草稿、qa_draft 问答草稿。",
+      "record_id": "目标记录或草稿修订 UUID。"
+    }
+  },
+  "POST /api/v1/messages/reassess": {
+    "summary": "重新评估消息归属",
+    "tag": "消息与证据",
+    "description": "按现有规则重新评估 needs_review 或 ignored 消息；排除人工处理及已删除消息。",
+    "access": "仅 admin。",
+    "version": "无",
+    "response": "{before,ignored,linked,business_review,dry_run,source_state,issue_ids}；分别为检查数量、忽略数量、关联数量、待人工确认数量及涉及问题。",
+    "notes": [
+      "默认 dry_run=true，仅统计建议；dry_run=false 才写入归属/处理状态并更新来源水位。",
+      "这是规则重评，不是发起大模型抽取。"
+    ],
+    "parameters": {
+      "dry_run": "默认 true；设 false 执行实际调整。",
+      "state": "待重评状态：needs_review（默认）或 ignored。"
+    }
+  },
+  "GET /api/health": {
+    "summary": "服务健康检查",
+    "tag": "系统",
+    "description": "检查应用及数据库连通性。",
+    "access": "无需登录。",
+    "version": "无",
+    "response": "{status:'ok'}；表示健康检查通过。",
+    "notes": [],
+    "parameters": {}
+  },
+  "GET /api/v1/auth/csrf": {
+    "summary": "获取请求校验令牌",
+    "tag": "认证",
+    "description": "获取 csrf_token 并设置 sr_csrf Cookie；已登录时同步会话中的校验信息。",
+    "access": "无需登录；已登录也可调用。",
+    "version": "无",
+    "response": "{csrf_token}；响应设置 HttpOnly 的 sr_csrf Cookie。",
+    "notes": [
+      "后续写请求需同时携带 Cookie、Origin 和 X-CSRF-Token。",
+      "这是 Cookie 会话机制，不提供 Bearer Token。"
+    ],
+    "parameters": {}
+  },
+  "POST /api/v1/auth/login": {
+    "summary": "登录",
+    "tag": "认证",
+    "description": "校验用户名和密码，创建新会话，返回当前用户与新的 CSRF 令牌。",
+    "access": "无需事先登录；仍须通过 Origin、CSRF 校验。",
+    "version": "无",
+    "response": "{user:{id,username,display_name,role,version},csrf_token}；同时设置 sr_session、sr_csrf Cookie。",
+    "notes": [
+      "先调用 GET /auth/csrf；登录后使用本接口返回的新 csrf_token。",
+      "同一用户名/IP 组合在 15 分钟内已有 10 次失败会限流，返回 429。",
+      "登录成功撤销当前已有会话；普通未登录登录请求不要求 Idempotency-Key，已登录调用仍受写请求幂等规则约束。"
+    ],
+    "parameters": {}
+  },
+  "GET /api/v1/auth/me": {
+    "summary": "获取当前账号",
+    "tag": "认证",
+    "description": "获取当前会话对应的安全用户信息。",
+    "access": "须登录。",
+    "version": "无",
+    "response": "{id,username,display_name,role,version}；不返回密码。",
+    "notes": [],
+    "parameters": {}
+  },
+  "POST /api/v1/auth/logout": {
+    "summary": "退出登录",
+    "tag": "认证",
+    "description": "撤销当前会话，并清除会话与 CSRF Cookie。",
+    "access": "须登录；仍须通过 Origin、CSRF 校验。",
+    "version": "无",
+    "response": "{ok:true}；表示退出登录成功。",
+    "notes": [
+      "此接口不要求 Idempotency-Key。"
+    ],
+    "parameters": {}
+  },
+  "GET /api/v1/users": {
+    "summary": "查询账号列表",
+    "tag": "账号管理",
+    "description": "查询可用、已删除或全部账号，并返回各账号的数据范围。",
+    "access": "仅 admin。",
+    "version": "无",
+    "response": "传 page 时返回 {items,total,page,page_size}；不传 page 时返回数组。账号包含 id、username、display_name、role、version、disabled_at、created_at、last_login_at。",
+    "notes": [],
+    "parameters": {
+      "page": "从 1 起；不传则返回数组。",
+      "page_size": "每页 1～100，默认 10；仅分页时生效。",
+      "q": "按用户名或显示名称模糊搜索，最长 200 字符。",
+      "role": "admin、agent、reviewer；省略不按角色过滤。",
+      "status": "active（默认）、deleted、all。"
+    }
+  },
+  "POST /api/v1/users": {
+    "summary": "创建账号",
+    "tag": "账号管理",
+    "description": "创建账号、设置角色与聊天昵称，并分配客户数据范围。",
+    "access": "仅 admin。",
+    "version": "无",
+    "response": "201；返回新账号的公开资料 {id,username,display_name,role,version}，不包含密码。",
+    "notes": [
+      "密码按请求模型要求为 12～200 字符；微信昵称会去空白、去重并参与身份识别。",
+      "用户名及身份名称需通过唯一性/歧义校验。"
+    ],
+    "parameters": {}
+  },
+  "GET /api/v1/users/{user_id}": {
+    "summary": "获取账号详情",
+    "tag": "账号管理",
+    "description": "读取账号公开资料及授权客户范围。",
+    "access": "仅 admin。",
+    "version": "无",
+    "response": "账号资料含 id、username、display_name、role、version、disabled_at、created_at、last_login_at。",
+    "notes": [
+      "版本说明：响应 ETag 对应账号 version。"
+    ],
+    "parameters": {
+      "user_id": "账号 UUID。"
+    }
+  },
+  "PATCH /api/v1/users/{user_id}": {
+    "summary": "修改账号资料或密码",
+    "tag": "账号管理",
+    "description": "修改 username、display_name、role；password 省略或 null 时不更换密码。",
+    "access": "仅 admin。",
+    "version": "必需；使用账号 version（可从详情 ETag 获取）。",
+    "response": "账号公开资料及 reauthenticate_self；响应 ETag 为更新后的账号 version。",
+    "notes": [
+      "虽使用 PATCH，username、display_name、role 仍都是请求模型必填字段。",
+      "修改用户名、角色或密码会撤销目标账号会话；修改自己的这些信息后 reauthenticate_self=true。",
+      "不能修改当前登录账号自身角色；不能降级最后一名可用管理员；已删除账号需先恢复。"
+    ],
+    "parameters": {
+      "user_id": "账号 UUID。"
+    }
+  },
+  "DELETE /api/v1/users/{user_id}": {
+    "summary": "删除账号",
+    "tag": "账号管理",
+    "description": "停用账号、撤销其会话，并更新聊天身份识别；历史业务归属仍保留。",
+    "access": "仅 admin。",
+    "version": "必需；使用账号 version，不是通用记录 delete_version。",
+    "response": "更新后的账号公开资料；disabled_at 非空，version 增加；响应 ETag 对应 version。",
+    "notes": [
+      "禁止删除当前账号或最后一名可用管理员。",
+      "这是可恢复停用；用户名仍被占用。"
+    ],
+    "parameters": {
+      "user_id": "要停用的账号 UUID。"
+    }
+  },
+  "POST /api/v1/users/{user_id}/restore": {
+    "summary": "恢复账号",
+    "tag": "账号管理",
+    "description": "恢复已停用账号，并重新校验身份名称、更新聊天身份识别。",
+    "access": "仅 admin。",
+    "version": "必需；使用账号 version。",
+    "response": "恢复后的账号公开资料；disabled_at=null；响应 ETag 对应 version。",
+    "notes": [
+      "不会恢复旧登录会话；已恢复账号再次恢复返回 409。"
+    ],
+    "parameters": {
+      "user_id": "已停用账号 UUID。"
+    }
+  },
+  "POST /api/v1/imports": {
+    "summary": "上传并预览聊天文件",
+    "tag": "文件导入",
+    "description": "以 multipart/form-data 上传文件，解码、解析并进行确定噪声预筛选，保存不可变原始文件及解析快照；此时尚未正式导入消息。",
+    "access": "仅 admin、agent；仅限有权访问的客户数据范围。",
+    "version": "无",
+    "response": "201；{batch,duplicate}；batch 包含 id、version、parse_version、current_parse_snapshot_id、state、message_count、parse_issues、screening_summary 等。",
+    "notes": [
+      "file 必填；encoding 默认 auto；group_id 可省略，省略时自动选择内部客户并新建文件分组。",
+      "文件不能为空，最大 10 MB；单文件最多解析 20000 条记录。",
+      "相同内容按 SHA-256 在指定分组或默认客户范围去重；duplicate=true 时复用已有批次。",
+      "预筛选只标记消息而不移除原文；正式导入需再调用 confirm。"
+    ],
+    "parameters": {}
+  },
+  "GET /api/v1/imports": {
+    "summary": "查询导入文件列表",
+    "tag": "文件导入",
+    "description": "搜索导入文件、确认状态与删除状态，并附带消息处理数量和预筛选统计。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 deleted=true 仅 admin。",
+    "version": "无",
+    "response": "传 page 时返回 {items,total,page,page_size}；不传 page 时返回数组。每项包含批次资料、is_deleted、delete_version、screening_summary、message_counts（active/deleted/pending/needs_review/assigned/ignored）。",
+    "notes": [
+      "不分页时最多返回 200 条。",
+      "版本说明：批次 version 用于确认，delete_version 用于软删除。"
+    ],
+    "parameters": {
+      "group_id": "可选分组 UUID。",
+      "page": "从 1 起；不传返回最多 200 条数组。",
+      "page_size": "每页 1～100，默认 10。",
+      "deleted": "默认 false；true 查询已删除文件，仅 admin。",
+      "q": "按文件名搜索，最长 200 字符。",
+      "status": "all（默认）、confirmed、pending。"
+    }
+  },
+  "GET /api/v1/imports/{import_id}": {
+    "summary": "获取导入文件详情",
+    "tag": "文件导入",
+    "description": "读取文件批次、解析状态、预筛选统计及消息处理数量。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 已删除文件仅 admin 可查看。",
+    "version": "无",
+    "response": "批次对象，包含 is_deleted、delete_version、screening_summary、message_counts 等。",
+    "notes": [
+      "版本说明：返回 batch.version、parse_version、delete_version 等版本字段。"
+    ],
+    "parameters": {
+      "import_id": "导入批次 UUID。"
+    }
+  },
+  "GET /api/v1/imports/{import_id}/preview": {
+    "summary": "查看解析原文与预筛选结果",
+    "tag": "文件导入",
+    "description": "读取当前解析快照，可筛选过滤或保留的记录；警告提供原文件行号。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 已删除文件仅 admin 可查看。",
+    "version": "无",
+    "response": "{batch,records,warnings,total,page,page_size,screening_summary}；records 含原文、时间、行号、解析及预筛选标记；total 为筛选后数量。",
+    "notes": [
+      "page 传入时覆盖 offset、limit；否则使用 offset/limit。",
+      "warnings 为当前完整快照警告，非仅当前页；保留原文可供追溯。",
+      "版本说明：响应 ETag 是 batch.version，确认时仍需额外携带 batch.parse_version。"
+    ],
+    "parameters": {
+      "import_id": "导入批次 UUID。",
+      "offset": "从 0 起，默认 0；不传 page 时生效。",
+      "limit": "1～500，默认 10；不传 page 时生效。",
+      "page": "从 1 起，传入则改用 page_size。",
+      "page_size": "1～100，默认 10。",
+      "screening": "all（默认）、filtered、retained。"
+    }
+  },
+  "POST /api/v1/imports/{import_id}/confirm": {
+    "summary": "确认导入解析结果",
+    "tag": "文件导入",
+    "description": "把当前快照写入消息、参与者和处理状态，更新文件/分组版本；不会直接启动 AI。",
+    "access": "仅 admin、agent；仅限有权访问的客户数据范围。",
+    "version": "必需；If-Match 为 batch.version；请求体 parse_version 必须等于当前 batch.parse_version，两者不可互换。",
+    "response": "更新后的批次对象，state='confirmed'、confirmed_at 非空；ETag 为新 batch.version。",
+    "notes": [
+      "有解析警告时必须 accept_warnings=true；已确认文件重复确认返回 409。",
+      "确定噪声初始状态为 ignored；异常解析为 needs_review；其它消息为 pending。",
+      "要恢复被预筛选消息，确认后调用消息 disposition 接口设 needs_review。"
+    ],
+    "parameters": {
+      "import_id": "导入批次 UUID。"
+    }
+  },
+  "GET /api/v1/messages": {
+    "summary": "查询原始聊天消息",
+    "tag": "消息与证据",
+    "description": "按文件、分组、处理状态、正文或发言人搜索消息，返回归属与可追溯的原文信息。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 deleted=true 或所属文件已删除时仅 admin 可访问。",
+    "version": "无",
+    "response": "{items,total,page,page_size}；items 含 raw_text、body_text、quoted_text、direct_body_spans、sent_at、source_filename、disposition、disposition_version、disposition_reason、disposition_note、assigned_issues、删除状态等。",
+    "notes": [
+      "page 传入时覆盖 offset/limit；raw_text 保持原始内容，body_text 等可体现最新解析注释。",
+      "state 为字符串过滤，不是受模型约束的枚举；常用 pending、needs_review、assigned、ignored。",
+      "版本说明：返回 disposition_version 和 delete_version，分别用于处理状态更新与删除恢复。"
+    ],
+    "parameters": {
+      "group_id": "可选分组 UUID。",
+      "batch_id": "可选导入批次 UUID。",
+      "offset": "默认 0，非负；不传 page 时生效。",
+      "limit": "1～500，默认 10；不传 page 时生效。",
+      "state": "处理状态过滤。",
+      "q": "按正文或原始发言人名称搜索，最长 200 字符。",
+      "page": "从 1 起；传入则使用 page_size。",
+      "page_size": "1～100，默认 10。",
+      "deleted": "默认 false；true 仅 admin，包含随文件删除的消息。"
+    }
+  },
+  "PUT /api/v1/messages/{message_id}/disposition": {
+    "summary": "忽略消息或恢复待处理",
+    "tag": "消息与证据",
+    "description": "人工设置消息为 ignored 或 needs_review，并记录原因；可用来恢复被预筛选的消息。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "必需；使用消息列表中的 disposition_version，不是 delete_version。",
+    "response": "处理状态记录，含 message_id、state、decision_source='human'、reason、version、prefilter_reason、prefilter_restored_at 等；ETag 为该 version。",
+    "notes": [
+      "请求 state 只允许 ignored、needs_review；reason 必填。",
+      "已关联任一问题的消息必须先从问题移除，否则返回 409 message_assigned。",
+      "消息必须未删除；预筛选消息恢复到 needs_review 时记录恢复时间，但不自动发起模型任务。"
+    ],
+    "parameters": {
+      "message_id": "消息 UUID。"
+    }
+  },
+  "POST /api/v1/evidence-spans": {
+    "summary": "从原文创建证据片段",
+    "tag": "消息与证据",
+    "description": "在单条消息 raw_text 中逐字定位 exact_excerpt，返回不可变的证据区间；同消息同区间复用已有证据。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "201；证据对象含 id、message_id、customer_id、start_cp、end_cp 等；id 可作为后续 evidence_span_id。",
+    "notes": [
+      "occurrence 从 1 起，选择同一逐字片段的第几次出现；匹配允许重叠。",
+      "start_cp/end_cp 为 Unicode 码点偏移，左闭右开，不是 JavaScript UTF-16 下标。",
+      "引文不存在、次数越界返回 422；原消息已删除不可新建证据。"
+    ],
+    "parameters": {}
+  },
+  "GET /api/v1/issues": {
+    "summary": "查询来源问题",
+    "tag": "问题归属",
+    "description": "列出未删除工单对应的来源问题，可按主分组过滤。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "问题数组，每项含 id、label、primary_group_id、version、message_version、ticket_id 等。",
+    "notes": [
+      "该接口不分页。"
+    ],
+    "parameters": {
+      "group_id": "可选主分组 UUID。"
+    }
+  },
+  "POST /api/v1/issues": {
+    "summary": "从消息创建问题和工单",
+    "tag": "问题归属",
+    "description": "选取消息及关联关系建立来源问题，同时创建尚无正式修订的工单。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "201；{issue,ticket}；issue 含 version/message_version；ticket 含 id、ticket_no、version、current_revision_id。",
+    "notes": [
+      "至少 1 条、最多 1000 条消息；消息不可重复，必须在同一可访问客户范围且未删除。",
+      "relation 可为 question、answer、progress、context、correction；同客户内可关联不同文件分组。",
+      "未传 group_id 时采用首条消息分组；创建对象不等于已有草稿内容或完成审核。"
+    ],
+    "parameters": {}
+  },
+  "GET /api/v1/issues/{issue_id}": {
+    "summary": "获取问题及关联消息",
+    "tag": "问题归属",
+    "description": "读取来源问题、对应工单 ID 及当前有效关联消息。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "{issue,ticket_id,messages}；messages 含 relation、原文、有效正文、来源文件等。",
+    "notes": [
+      "关联消息默认排除已删除消息；工单/QA 详情可提供包含已删除来源的追溯数据。",
+      "版本说明：ETag 对应 issue.version。"
+    ],
+    "parameters": {
+      "issue_id": "来源问题 UUID。"
+    }
+  },
+  "PATCH /api/v1/issues/{issue_id}/messages": {
+    "summary": "替换问题关联消息",
+    "tag": "问题归属",
+    "description": "用请求中的完整 messages 数组替换当前有效关联，并更新消息处理状态和来源版本。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "必需；使用 issue.version（不是 message_version）。",
+    "response": "更新后的 issue 对象；ETag 对应新 issue.version。",
+    "notes": [
+      "这是整体替换，不是追加；允许空数组移除全部关联。",
+      "消息不可重复，须同客户、未删除；关联后变 assigned，无其它有效关联的移出消息变 needs_review。",
+      "来源变化会使已有草稿快照过期，提交前需重新保存。"
+    ],
+    "parameters": {
+      "issue_id": "来源问题 UUID。"
+    }
+  },
+  "GET /api/v1/tickets": {
+    "summary": "查询工单列表",
+    "tag": "工单与修订",
+    "description": "查询工单及其当前正式修订、最新可见修订和来源文件。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 deleted=true 仅 admin。",
+    "version": "无",
+    "response": "传 page 时返回 {items,total,page,page_size}；不传 page 时返回数组。每项包含对象字段、current_revision、latest_revision、source_filenames、is_deleted、delete_version、parent_deleted。",
+    "notes": [
+      "未传 page 时最多返回 200 条。",
+      "所有草稿均已删除的对象也会出现在已删除列表；只剩历史或正式版本时仍按实际可见修订判断。",
+      "版本说明：业务 version 与 delete_version 分开使用。"
+    ],
+    "parameters": {
+      "page": "从 1 起；省略返回最多 200 条数组。",
+      "page_size": "每页 1～100，默认 10。",
+      "customer_id": "可选客户 UUID；仍按当前账号范围过滤。",
+      "q": "按编号及内容搜索，最长 200 字符。",
+      "deleted": "默认 false；true 仅 admin。"
+    }
+  },
+  "GET /api/v1/qa": {
+    "summary": "查询QA列表",
+    "tag": "QA 与修订",
+    "description": "查询QA及其当前正式修订、最新可见修订和来源文件。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 deleted=true 仅 admin。",
+    "version": "无",
+    "response": "传 page 时返回 {items,total,page,page_size}；不传 page 时返回数组。每项包含对象字段、current_revision、latest_revision、source_filenames、is_deleted、delete_version、parent_deleted。",
+    "notes": [
+      "未传 page 时最多返回 200 条。",
+      "所有草稿均已删除的对象也会出现在已删除列表；只剩历史或正式版本时仍按实际可见修订判断。",
+      "版本说明：业务 version 与 delete_version 分开使用。"
+    ],
+    "parameters": {
+      "page": "从 1 起；省略返回最多 200 条数组。",
+      "page_size": "每页 1～100，默认 10。",
+      "customer_id": "可选客户 UUID；仍按当前账号范围过滤。",
+      "q": "按编号及内容搜索，最长 200 字符。",
+      "deleted": "默认 false；true 仅 admin。"
+    }
+  },
+  "POST /api/v1/qa": {
+    "summary": "创建 QA 草稿",
+    "tag": "QA 与修订",
+    "description": "基于一个或多个同客户问题创建 QA 对象和首个草稿修订。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "201；{object,revision}；revision 包含修订正文、证据、贡献者、state、state_version 等。",
+    "notes": [
+      "必须有 issue_ids，来源问题须有效且对应工单未删除。",
+      "贡献者证据必须为该参与者本人直接发言，不能引用他人的内容。",
+      "创建草稿不代表批准；保存可不满足全部审核条件，提交时再作严格检查。",
+      "版本说明：首次对象版本由服务端初始化。"
+    ],
+    "parameters": {}
+  },
+  "GET /api/v1/reviews": {
+    "summary": "查询待审核记录",
+    "tag": "审核",
+    "description": "分页列出最新未删除修订处于 in_review 的工单和 QA。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 浏览队列不等于拥有批准权限；approve/reject 仅 admin、reviewer。",
+    "version": "无",
+    "response": "{items,total,page,page_size}；items 为装饰后的工单/QA 对象，额外 objectKind='ticket' 或 'qa'。",
+    "notes": [
+      "只选各对象的最新可见修订；已删除对象和草稿不进入队列。"
+    ],
+    "parameters": {
+      "page": "从 1 起，默认 1。",
+      "page_size": "1～100，默认 10。",
+      "customer_id": "可选客户 UUID。"
+    }
+  },
+  "GET /api/v1/overview": {
+    "summary": "获取工作台统计",
+    "tag": "统计",
+    "description": "汇总可见工单、正式工单、QA、正式 QA、待审核数量和待归属消息数量。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "返回概览计数 {tickets,official_tickets,qa,official_qa,reviews,unassigned_messages}，分别对应工单、正式工单、QA、正式 QA、待审核记录和待分配消息数量。",
+    "notes": [
+      "group_id 仅用于待归属消息数量，不缩小工单、QA、审核等统计。",
+      "待归属消息指 pending 或 needs_review；删除记录排除。"
+    ],
+    "parameters": {
+      "customer_id": "可选客户 UUID，限制整体统计范围。",
+      "group_id": "可选分组 UUID，只限制 unassigned_messages；同时指定 customer_id 但二者不匹配时，不应用该分组过滤。"
+    }
+  },
+  "GET /api/v1/tickets/{object_id}": {
+    "summary": "获取工单详情及历史",
+    "tag": "工单与修订",
+    "description": "读取工单对象、未删除历史修订、证据和来源消息，用于编辑与原文追溯。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 对象处于已删除状态时仅 admin。",
+    "version": "无",
+    "response": "{object,revisions,source_messages,participants,reviews,events,notes}；revisions 逐项含 state_version、evidence、stale、delete_version；QA 修订还含 issue_ids、contributors。",
+    "notes": [
+      "修订列表按 revision_no 倒序，排除已软删除的草稿；原文来源包含带删除标记的消息以支持追溯。",
+      "object.current_revision_id 指向当前正式版；最新草稿不一定等于正式版。",
+      "版本说明：ETag 对应 object.version，不能用作后续审核的修订状态版本。"
+    ],
+    "parameters": {
+      "object_id": "工单对象 UUID。"
+    }
+  },
+  "POST /api/v1/tickets/{object_id}/revisions": {
+    "summary": "保存工单新修订",
+    "tag": "工单与修订",
+    "description": "保存不可变的新草稿，关联证据与来源快照；可通过 replaces_revision_id 替代同对象旧草稿。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "必需；If-Match 使用 object.version；请求体 expected_object_version 同值，base_revision_id 应为 object.current_revision_id。成功 ETag 改为新修订 state_version。",
+    "response": "201；新修订详情，含 id、revision_no、state、state_version、base_object_version、base_revision_id、evidence、来源快照及 stale 等。",
+    "notes": [
+      "保存和提交是两次独立请求；提交失败时已保存草稿仍保留。",
+      "replaces_revision_id 仅能指向本对象 draft、in_review、rejected 修订；原 draft/in_review 会变 superseded。",
+      "工单日期由关联来源消息推导；first_visible_message_id 须指向最早有效可见时间，日期依据需与 first_question_message_id 一致。",
+      "QA 贡献者证据须属于本人直接发言；所有证据须来自当前关联问题。"
+    ],
+    "parameters": {
+      "object_id": "工单对象 UUID。"
+    }
+  },
+  "POST /api/v1/tickets/{object_id}/revisions/{revision_id}/{action}": {
+    "summary": "提交或审核工单修订",
+    "tag": "审核",
+    "description": "对指定草稿进行提交、批准或驳回；成功批准才更新对象正式版本指针。",
+    "access": "submit：已登录 admin、agent、reviewer；approve/reject：仅 admin、reviewer；均须满足客户数据范围。",
+    "version": "必需；If-Match 使用目标 revision.state_version；请求体 expected_object_version 使用 object.version，expected_current_revision_id 使用 object.current_revision_id。",
+    "response": "操作后的修订详情；ETag 为更新后的 state_version。",
+    "notes": [
+      "action 仅 submit、approve、reject；未知值返回 404。",
+      "submit 仅允许 draft，approve/reject 仅允许 in_review；驳回 comment 必须非空。",
+      "提交与批准都会核对来源快照、未归属消息、矛盾证据和必需支持证据；QA 还要求明确答案、关键事实及贡献者。",
+      "批准工单若缺少原始提问，必须显式 accept_incomplete_start=true；QA 不使用该确认。",
+      "批准会增加 object.version；应重新获取对象详情再进行后续保存或审核。"
+    ],
+    "parameters": {
+      "object_id": "工单对象 UUID。",
+      "revision_id": "修订 UUID，必须属于 object_id。",
+      "action": "submit（提交）、approve（批准）、reject（驳回）。"
+    }
+  },
+  "GET /api/v1/qa/{object_id}": {
+    "summary": "获取QA详情及历史",
+    "tag": "QA 与修订",
+    "description": "读取QA对象、未删除历史修订、证据和来源消息，用于编辑与原文追溯。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。 对象处于已删除状态时仅 admin。",
+    "version": "无",
+    "response": "{object,revisions,source_messages,participants,reviews}；revisions 逐项含 state_version、evidence、stale、delete_version；QA 修订还含 issue_ids、contributors。",
+    "notes": [
+      "修订列表按 revision_no 倒序，排除已软删除的草稿；原文来源包含带删除标记的消息以支持追溯。",
+      "object.current_revision_id 指向当前正式版；最新草稿不一定等于正式版。",
+      "版本说明：ETag 对应 object.version，不能用作后续审核的修订状态版本。"
+    ],
+    "parameters": {
+      "object_id": "QA对象 UUID。"
+    }
+  },
+  "POST /api/v1/qa/{object_id}/revisions": {
+    "summary": "保存QA新修订",
+    "tag": "QA 与修订",
+    "description": "保存不可变的新草稿，关联证据与来源快照；可通过 replaces_revision_id 替代同对象旧草稿。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "必需；If-Match 使用 object.version；请求体 expected_object_version 同值，base_revision_id 应为 object.current_revision_id。成功 ETag 改为新修订 state_version。",
+    "response": "201；新修订详情，含 id、revision_no、state、state_version、base_object_version、base_revision_id、evidence、来源快照及 stale 等。",
+    "notes": [
+      "保存和提交是两次独立请求；提交失败时已保存草稿仍保留。",
+      "replaces_revision_id 仅能指向本对象 draft、in_review、rejected 修订；原 draft/in_review 会变 superseded。",
+      "工单日期由关联来源消息推导；first_visible_message_id 须指向最早有效可见时间，日期依据需与 first_question_message_id 一致。",
+      "QA 贡献者证据须属于本人直接发言；所有证据须来自当前关联问题。"
+    ],
+    "parameters": {
+      "object_id": "QA对象 UUID。"
+    }
+  },
+  "POST /api/v1/qa/{object_id}/revisions/{revision_id}/{action}": {
+    "summary": "提交或审核QA修订",
+    "tag": "审核",
+    "description": "对指定草稿进行提交、批准或驳回；成功批准才更新对象正式版本指针。",
+    "access": "submit：已登录 admin、agent、reviewer；approve/reject：仅 admin、reviewer；均须满足客户数据范围。",
+    "version": "必需；If-Match 使用目标 revision.state_version；请求体 expected_object_version 使用 object.version，expected_current_revision_id 使用 object.current_revision_id。",
+    "response": "操作后的修订详情；ETag 为更新后的 state_version。",
+    "notes": [
+      "action 仅 submit、approve、reject；未知值返回 404。",
+      "submit 仅允许 draft，approve/reject 仅允许 in_review；驳回 comment 必须非空。",
+      "提交与批准都会核对来源快照、未归属消息、矛盾证据和必需支持证据；QA 还要求明确答案、关键事实及贡献者。",
+      "批准工单若缺少原始提问，必须显式 accept_incomplete_start=true；QA 不使用该确认。",
+      "批准会增加 object.version；应重新获取对象详情再进行后续保存或审核。"
+    ],
+    "parameters": {
+      "object_id": "QA对象 UUID。",
+      "revision_id": "修订 UUID，必须属于 object_id。",
+      "action": "submit（提交）、approve（批准）、reject（驳回）。"
+    }
+  },
+  "POST /api/v1/tickets/{ticket_id}/notes": {
+    "summary": "追加工单备注",
+    "tag": "工单与修订",
+    "description": "为未删除工单追加人工备注，不改写已保存修订正文。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "必需；使用工单 object.version。",
+    "response": "201；备注对象，含 id、ticket_id、body、author_id、created_at、author_name、author_username。",
+    "notes": [
+      "note 为 1～4000 字符；本接口自身不增加工单 version。"
+    ],
+    "parameters": {
+      "ticket_id": "工单 UUID。"
+    }
+  },
+  "GET /api/v1/statistics/daily": {
+    "summary": "按工单日期统计",
+    "tag": "统计",
+    "description": "按当前正式修订的 ticket_date 汇总有效工单数量。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "数组 [{day,tickets},...]；按日期倒序，最多 90 个日期分组。",
+    "notes": [
+      "只统计已有正式修订且工单未删除的记录；最多 90 个分组并不等于补齐最近 90 个自然日。"
+    ],
+    "parameters": {}
+  },
+  "GET /api/v1/integrations/dify": {
+    "summary": "查看模型密钥配置状态",
+    "tag": "AI 任务",
+    "description": "查询 local、external 两种 Dify 配置是否同时具有主题归属和记录抽取 API Key。",
+    "access": "须登录；所有角色均可查看。",
+    "version": "无",
+    "response": "返回模型配置状态 [{id:'local',configured:boolean},{id:'external',configured:boolean}]；configured 表示两条工作流 API Key 是否均已配置，不代表地址连通或工作流可运行，不返回密钥。",
+    "notes": [
+      "不会返回 API Key；configured 只检查两个 Key 是否配置，不会实际探测地址、联网或验证工作流可运行。"
+    ],
+    "parameters": {}
+  },
+  "POST /api/v1/imports/{import_id}/extractions": {
+    "summary": "为文件发起 AI 归属与抽取",
+    "tag": "AI 任务",
+    "description": "为已确认文件中的待归属消息创建后台抽取任务；按 mode 生成工单、QA 或两者草稿。",
+    "access": "仅 admin、agent；仅限有权访问的客户数据范围。",
+    "version": "无",
+    "response": "202；任务对象，含 id、state、mode、batch_id、version、model_profile_snapshot、input_manifest 等；复用任务时 reused_request=true。",
+    "notes": [
+      "mode：ticket、qa、both（默认）；profile：local（默认）、external。",
+      "文件须已确认且未删除；仅 pending、needs_review 消息进入主输入。",
+      "相同来源/mode/profile 的 queued/running 任务可复用；新恢复消息未包含在活动任务内时返回 409。",
+      "没有待归属消息时可能复用已成功任务，否则返回 409 no_pending_messages；可从已有问题重新抽取。",
+      "调用会排队执行真实模型工作流；结果仍是草稿，不会自动批准。",
+      "版本说明：服务端记录输入批次、消息处置和身份配置快照。"
+    ],
+    "parameters": {
+      "import_id": "导入批次 UUID。"
+    }
+  },
+  "POST /api/v1/issues/{issue_id}/extractions": {
+    "summary": "为问题重新抽取草稿",
+    "tag": "AI 任务",
+    "description": "基于已有来源问题创建抽取任务，用于重新生成工单或 QA 草稿。",
+    "access": "仅 admin、agent；仅限有权访问的客户数据范围。",
+    "version": "无",
+    "response": "202；任务对象，含 id、target_issue_id、mode、state、version 等；复用活动任务时 reused_request=true。",
+    "notes": [
+      "mode：ticket、qa、both（默认）；profile：local（默认）、external。",
+      "来源工单必须未删除；同来源、mode、profile 的活动任务可复用。",
+      "调用会排队执行真实模型工作流，结果需人工审核。",
+      "版本说明：服务端记录输入和身份配置快照。"
+    ],
+    "parameters": {
+      "issue_id": "来源问题 UUID。"
+    }
+  },
+  "GET /api/v1/jobs": {
+    "summary": "查询 AI 任务列表",
+    "tag": "AI 任务",
+    "description": "按客户或导入批次查看后台抽取任务状态及进度。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "传 page 时返回 {items,total,page,page_size}；不传 page 时返回数组。每项为任务记录，移除 topic_plan，并过滤 checkpoint 中内部 owned_disposition_versions/issue_versions。",
+    "notes": [
+      "不分页时最多返回 200 条；batch_id 会先检查批次范围。",
+      "版本说明：job.version 用于取消或重试。"
+    ],
+    "parameters": {
+      "page": "从 1 起；省略返回最多 200 条数组。",
+      "page_size": "1～100，默认 10。",
+      "customer_id": "可选客户 UUID。",
+      "batch_id": "可选文件导入批次 UUID，用于文件处理页跟踪任务。"
+    }
+  },
+  "GET /api/v1/jobs/{job_id}": {
+    "summary": "查看 AI 任务进度与诊断",
+    "tag": "AI 任务",
+    "description": "读取任务状态、计数、诊断和各执行步骤，供轮询进度使用。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "任务对象加 steps 数组；steps 含 id、stage、target_key、state、attempt_count、error_code、error_summary、dify_workflow_run_id、input_tokens、output_reserve、context_limit。",
+    "notes": [
+      "步骤不返回完整输入/输出聊天文本；公开任务移除 topic_plan 和部分内部 checkpoint 字段。",
+      "input_tokens 是步骤测算输入量，output_reserve 是预算预留，不能直接当作实际输出 Token 用量。",
+      "版本说明：返回 job.version，但不设置 ETag。"
+    ],
+    "parameters": {
+      "job_id": "AI 抽取任务 UUID。"
+    }
+  },
+  "GET /api/v1/jobs/{job_id}/records": {
+    "summary": "查看任务生成的记录",
+    "tag": "AI 任务",
+    "description": "分页列出任务创建或更新的工单、QA 修订，支持从文件处理结果直达草稿。",
+    "access": "已登录的 admin、agent、reviewer；仅限有权访问的客户数据范围（admin 可访问所有有效客户）。",
+    "version": "无",
+    "response": "{items,total,page,page_size}；每项含 record_kind、record_id、revision_id、issue_id、action、title、record_no、revision_no、state、created_by、is_deleted、created_at。",
+    "notes": [
+      "同时兼容旧任务由 source_job_step_id 反查的结果；返回删除标记以便客户端避免误用已删除草稿。"
+    ],
+    "parameters": {
+      "job_id": "AI 抽取任务 UUID。",
+      "page": "从 1 起，默认 1。",
+      "page_size": "1～100，默认 10。"
+    }
+  },
+  "POST /api/v1/jobs/{job_id}/{action}": {
+    "summary": "取消或重试 AI 任务",
+    "tag": "AI 任务",
+    "description": "请求取消进行中任务，或从已失败/取消的任务继续重试。",
+    "access": "仅 admin、agent；仅限有权访问的客户数据范围。",
+    "version": "必需；使用 job.version。",
+    "response": "更新后的任务对象，包含 state、version 等；此接口当前不设置 ETag。",
+    "notes": [
+      "action 仅 cancel 或 retry；cancel 允许 queued、running，转为 cancel_requested，实际停止由 worker 执行。",
+      "retry 允许 failed、partial_failed、cancelled，转为 queued；已有完成结果保留。",
+      "身份配置版本变化后不能重试旧任务，应创建新任务；无效 action 或状态返回 409。"
+    ],
+    "parameters": {
+      "job_id": "AI 抽取任务 UUID。",
+      "action": "cancel（请求取消）或 retry（重试）。"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+.file-detail-heading > div { min-width:0; }
+.file-detail-heading h1 { overflow-wrap:anywhere; }
+.file-detail-heading > button { flex-shrink:0; }
+.import-files-panel > .section-line { margin-bottom:18px; }
+.file-library-toolbar .search { flex:1; }
+.import-file-row { display:flex; align-items:center; gap:16px; padding:22px 0; border-bottom:1px solid var(--line); }
+.import-file-icon { width:44px; height:48px; border-radius:8px; background:#edf4ef; color:#5a8b6d; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.import-file-info { min-width:0; flex:1; }
+.import-file-name.text-button { display:block; max-width:100%; text-align:left; white-space:normal; overflow-wrap:anywhere; font-size:15px; font-weight:600; line-height:1.7; }
+.import-file-info > small { margin-top:5px; }
+.import-file-summary { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-top:9px; font-size:12px; color:#7a8985; }
+.import-file-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; max-width:510px; }
+.current-file-panel { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.current-file-panel > div { min-width:0; }
+.current-file-panel .hint { margin-bottom:0; }
+.current-file-actions { display:flex; flex-wrap:wrap; gap:8px; flex-shrink:0; }
+@media(max-width:1100px) {
+  .import-file-row { flex-wrap:wrap; }
+  .import-file-actions { flex-basis:100%; max-width:none; justify-content:flex-start; margin-left:60px; }
+  .current-file-panel { align-items:flex-start; flex-direction:column; gap:12px; }
+}
+@media(max-width:780px) {
+  .file-detail-heading { flex-wrap:wrap; }
+  .file-library-toolbar .search { flex-basis:100%; }
+  .file-library-toolbar > select { flex:1; min-width:0; font-size:11px; }
+  .import-file-row { gap:12px; padding:18px 0; }
+  .import-file-icon { width:32px; height:38px; }
+  .import-file-name.text-button { font-size:13px; }
+  .import-file-actions { margin-left:0; }
+  .import-file-actions .small { font-size:10px; padding:6px 8px; }
+  .import-file-summary { font-size:11px; gap:6px 9px; }
+  .current-file-actions { flex-shrink:1; }
+}

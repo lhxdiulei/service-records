@@ -1,0 +1,25 @@
+.editor-form > textarea,.editor-form > select { width:100%; }
+.field-heading { display:flex; align-items:center; gap:10px; justify-content:space-between; margin:18px 0 8px; flex-wrap:wrap; }
+.field-heading label { margin:0; font-size:12px; }
+.field-heading .evidence-shortcut { font-size:11px; text-align:left; }
+.evidence-shortcut.missing,.evidence-shortcut.changed { color:#906d35; }
+.evidence-shortcut.conflict { color:#aa5144; }
+.date-summary { margin:18px 0 22px; padding:14px 16px; border:1px solid #e1ebe6; border-radius:7px; background:#f6faf8; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+.date-summary > div { flex:1; }
+.date-summary > div span { display:block; font-size:11px; color:var(--muted); }
+.date-summary strong { display:block; font-size:13px; font-weight:500; margin-top:6px; }
+.date-summary > p,.date-summary > details { flex-basis:100%; margin:0; }
+.date-summary .warning-text { font-size:11px; line-height:1.8; }
+.date-summary summary { cursor:pointer; font-size:11px; color:var(--green); padding:5px 0; }
+.date-summary label { margin-bottom:0; }
+.date-summary .text-button { font-size:11px; }
+.editor-disclosure { border-top:1px solid var(--line); margin-top:22px; padding-top:16px; }
+.editor-disclosure > summary { cursor:pointer; font-size:13px; font-weight:500; line-height:1.8; }
+.editor-disclosure > summary span { font-size:11px; font-weight:400; }
+.editor-disclosure .section-line { margin-top:10px; }
+.fact-card { margin:14px 0; padding:12px; border:1px solid #e6eddf; border-radius:6px; background:#fcfdf9; }
+.fact-card .field-heading { margin-top:0; }
+.fact-card textarea { width:100%; font-size:12px; }
+.fact-card .field-heading label { margin-right:auto; }
+.editor-disclosure .evidence-item > .text-button { margin-top:8px; font-size:11px; }
+@media(max-width:780px) { .date-summary { padding:12px; } .field-heading { gap:6px; } .date-summary > div { flex-basis:100%; } }

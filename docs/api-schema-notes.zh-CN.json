@@ -1,0 +1,203 @@
+{
+  "Assignment": {
+    "description": "将一条原始消息关联到问题，并说明该消息在问题中的作用。",
+    "properties": {
+      "message_id": "原始消息 UUID，来自消息列表或导入后的消息记录；消息必须处于可访问的同一客户范围内。",
+      "relation": "消息作用：question=提问，answer=回答，progress=处理进展，context=补充上下文，correction=更正。"
+    }
+  },
+  "Body_upload_api_v1_imports_post": {
+    "description": "聊天文件上传表单，使用 multipart/form-data，而不是 JSON。上传后返回解析结果，仍需确认导入。",
+    "properties": {
+      "file": "聊天记录文本文件的二进制内容；文件不能为空且不得超过服务器配置的大小上限。",
+      "group_id": "已有聊天群组 UUID；省略时使用当前用户的内部数据范围，并根据文件名自动建立群组。",
+      "encoding": "文本编码；auto 按 utf-8-sig、gb18030、utf-16 的顺序尝试解码，也可明确指定文件使用的编码。"
+    }
+  },
+  "Claim": {
+    "description": "工单或 QA 中需要单独关联原文依据的一项关键事实。",
+    "properties": {
+      "claim_key": "当前修订内唯一且稳定的事实标识，例如 c1；用于证据字段 claims.c1 或 answer_claims.c1，不是数据库 UUID。",
+      "text": "关键事实的文字表述；提交审核时每一项都需要 supports 类型的原文依据。"
+    }
+  },
+  "ConfirmImport": {
+    "description": "确认当前解析快照，将解析结果写入原始消息记录；不直接启动 AI 抽取。",
+    "properties": {
+      "parse_version": "刚刚查看并确认的解析版本号，取自导入详情或预览的 batch.parse_version；解析版本变化时返回冲突。",
+      "accept_warnings": "是否已人工查看并接受解析警告；当前解析结果存在警告时必须为 true 才能确认。"
+    }
+  },
+  "Contributor": {
+    "description": "QA 核心贡献者及其贡献证据；贡献者身份来自聊天参与者，不直接填写系统用户 UUID。",
+    "properties": {
+      "participant_id": "聊天参与者 UUID，来自参与者列表或详情中的 participants；必须与当前 QA 属于同一客户范围。",
+      "contribution": "说明该参与者提供了什么关键帮助，例如提供处理方案或验证解决结果。",
+      "evidence_span_ids": "证据片段 UUID 列表。每一段都必须来自已关联来源问题，且完全位于该参与者本人的直接发言区域内；引用他人的文字不能作为本人贡献。"
+    }
+  },
+  "Disposition": {
+    "description": "人工调整尚未归属问题的消息处理状态；忽略不会删除原文。",
+    "properties": {
+      "state": "ignored=忽略，needs_review=恢复为待人工处理。已关联问题的消息必须先解除问题关联才能使用此接口调整。",
+      "reason": "人工忽略或恢复消息的原因，用于保留处理依据和审计记录。"
+    }
+  },
+  "EvidenceBinding": {
+    "description": "将已创建的原文证据片段绑定到当前修订的具体字段或关键事实。",
+    "properties": {
+      "evidence_span_id": "由 POST /api/v1/evidence-spans 返回的片段 UUID；片段必须来自当前修订关联的来源问题。",
+      "field_key": "被解释的字段名，例如 problem、handling_summary、current_conclusion、status、question、answer；关键事实使用 claims.<claim_key> 或 answer_claims.<claim_key>，且该事实必须存在。",
+      "relation": "supports=支持该内容，contradicts=与该内容矛盾，context=仅提供上下文。存在矛盾证据时不能提交或批准，context 不计入必需的支持依据。"
+    }
+  },
+  "EvidenceCreate": {
+    "description": "通过逐字引文在不可变原始消息中定位证据；服务端计算 Unicode 码点偏移，相同消息及位置会复用已有片段。",
+    "properties": {
+      "message_id": "证据所在原始消息的 UUID；可从消息列表或记录详情的 source_messages 获取，不能引用已删除消息。",
+      "exact_excerpt": "必须与消息 raw_text 完全一致的原文片段，包含原有换行、空白和标点；不能传改写、摘要或消息外的文本。",
+      "occurrence": "该逐字引文在同一 raw_text 中第几次出现，从 1 开始；按从左到右逐位置查找，重复出现时用于确定具体位置，允许重叠匹配。"
+    }
+  },
+  "Extract": {
+    "description": "请求后台执行 AI 抽取，创建工单和/或 QA 草稿；结果仍需人工审核。",
+    "properties": {
+      "mode": "ticket=抽取工单草稿，qa=抽取 QA 草稿，both=两类都抽取。",
+      "profile": "Dify 连接配置：local=本地配置，external=外部配置。对应配置必须已在服务端设置；可通过 /api/v1/integrations/dify 查询配置状态。"
+    }
+  },
+  "HTTPValidationError": {
+    "description": "FastAPI 对请求参数或请求体结构校验失败时返回的 HTTP 422 错误结构；与业务错误结构不同。",
+    "properties": {
+      "detail": "字段校验错误数组；每一项说明错误位置、文字提示及错误类型。"
+    }
+  },
+  "IssueCreate": {
+    "description": "人工将原始消息组织为一个问题，同时创建关联工单对象；工单正文需要另行保存修订。",
+    "properties": {
+      "group_id": "问题的主要聊天群组 UUID；省略时使用 messages 第一条消息所属群组。来源消息可以跨群组，但必须处于同一可访问客户范围。",
+      "title": "问题标题，用于识别来源话题。",
+      "messages": "初始关联消息及其作用；message_id 不得重复。"
+    }
+  },
+  "IssueMessages": {
+    "description": "整体替换一个问题的消息关联集合，同时保留历史关联记录。",
+    "properties": {
+      "messages": "更新后的完整关联列表，不是仅新增的差量；传空数组解除全部当前关联。被移除且不再关联其他问题的消息恢复为 needs_review。"
+    }
+  },
+  "Login": {
+    "description": "使用系统账号登录并建立 Cookie 会话。",
+    "properties": {
+      "username": "系统账号登录名。",
+      "password": "该账号当前密码。本登录字段的长度规则不同于用户创建/修改密码接口，不用于设置初始管理员密码。"
+    }
+  },
+  "NextAction": {
+    "description": "工单的后续处理事项，并明确区分聊天已经约定的事项和审核人员建议。",
+    "properties": {
+      "text": "后续处理事项的具体说明。",
+      "basis": "explicit_in_chat=聊天中明确提出，reviewer_suggestion=审核人员提出的建议。",
+      "evidence_span_ids": "支持该事项的原文片段 UUID 列表；explicit_in_chat 时不得为空，所有片段必须来自该工单的问题来源。"
+    }
+  },
+  "Note": {
+    "description": "向工单追加人工备注；备注与版本正文独立保存。",
+    "properties": {
+      "note": "本次追加的备注内容。"
+    }
+  },
+  "QAContent": {
+    "description": "QA 修订正文。草稿可保留尚无答案、存在冲突或上下文缺失的情况；提交审核和批准另有完整性校验。",
+    "properties": {
+      "question": "整理后的知识问题；提交审核时需要绑定支持该问题的原文依据。",
+      "answer": "整理后的回答。草稿允许为空；提交审核或批准要求非空且有原文支持。",
+      "answer_state": "supported=有依据的答案，no_answer=尚无答案，conflict=答案存在冲突，missing_context=缺少必要上下文；提交审核和批准要求 supported。",
+      "applicability": "答案适用的前提、环境或范围，避免将特定场景的结论无条件推广。",
+      "answer_claims": "回答中的关键事实；提交审核时至少需要一项，并为每项绑定 answer_claims.<claim_key> 的支持依据。",
+      "contributors": "对回答有关键贡献的聊天参与者及本人直接发言证据；提交审核时至少需要一名。"
+    }
+  },
+  "QACreate": {
+    "description": "新建 QA 对象并保存其第一份草稿，不直接成为已批准知识。",
+    "properties": {
+      "issue_ids": "来源问题 UUID 列表，来自问题列表或工单对象的 issue_id；来源必须处于同一客户范围。",
+      "content": "第一份 QA 草稿的完整正文。",
+      "evidence": "该草稿字段与原文片段的绑定列表；所有片段必须位于 issue_ids 对应的问题来源中。"
+    }
+  },
+  "QARevisionCreate": {
+    "description": "为已有 QA 保存一份不可变的新草稿修订，并校验正式版本是否已变化。",
+    "properties": {
+      "expected_object_version": "读取 QA 详情时取得的 object.version；必须与服务端当前对象版本一致。它不同于修订的 state_version。",
+      "base_revision_id": "读取详情时的 object.current_revision_id，即当前已批准的正式版本 UUID；尚无正式版本时传 null。不能用正在编辑的草稿 UUID 代替。",
+      "replaces_revision_id": "本次编辑所替代的同一 QA 草稿、审核中或驳回修订 UUID。旧草稿/审核中版本会标记为 superseded，驳回版本保持原状态；正文和历史不被覆盖。",
+      "evidence": "新修订的完整字段证据绑定集合，不是差量更新。",
+      "change_reason": "本次修改的原因，写入创建修订的审计记录。",
+      "content": "新修订的完整 QA 正文。",
+      "issue_ids": "新修订的完整来源问题 UUID 列表；全部来源必须与 QA 属于同一客户范围。"
+    }
+  },
+  "Review": {
+    "description": "提交、批准或驳回指定修订时的并发校验与审核说明；动作由 URL 中的 action 决定。",
+    "properties": {
+      "expected_object_version": "刚读取的工单/QA object.version；所有审核动作都检查此值。修订 state_version 另通过 If-Match 请求头传递。",
+      "expected_current_revision_id": "刚读取的 object.current_revision_id，即当前正式版本 UUID；尚无正式版本时传 null，不能填写本次待审草稿 UUID。",
+      "comment": "提交或审核意见；驳回时必须填写非空白原因。",
+      "accept_incomplete_start": "批准工单时，是否明确接受缺少原始提问、以首次可见上下文确定日期的情况；该类工单批准时必须为 true，不会补造原始提问。"
+    }
+  },
+  "TicketContent": {
+    "description": "工单修订的完整正文。日期来自所关联原文消息，服务端计算并保存日期快照。",
+    "properties": {
+      "title": "工单标题。",
+      "first_visible_message_id": "该问题来源中最早具有有效时间的可见消息 UUID；服务端校验它确实对应最早可见时间，不接受手填日期替代。",
+      "first_question_message_id": "经人工或抽取确认的原始提问消息 UUID，必须属于该问题且具有有效时间；缺少原始提问时应传 null，不能用后续回答冒充。",
+      "date_basis": "first_question=按原始提问时间确定工单日期，此时必须提供 first_question_message_id；first_visible_context=按首次可见上下文确定日期，此时提问 ID 必须为空，批准还需人工确认上下文不完整。",
+      "problem": "问题描述。",
+      "impact": "问题产生的影响或涉及范围。",
+      "handling_summary": "已发生处理过程的摘要。",
+      "current_conclusion": "根据现有记录得出的当前结论。",
+      "claims": "需要单独核对的关键事实；有条目时，每项均须绑定 claims.<claim_key> 的支持依据才能提交审核。",
+      "next_actions": "后续处理事项列表，分别注明聊天约定或审核人员建议。",
+      "status": "业务处理状态：open=待处理，in_progress=处理中，waiting_customer=等待客户，waiting_internal=等待内部处理，answered=已答复，resolved=已解决，cancelled=已取消，unknown=未知。它不同于修订的草稿/审核状态。"
+    }
+  },
+  "TicketRevisionCreate": {
+    "description": "为已有工单保存一份不可变的新草稿修订；保存不会直接替换正式版本。",
+    "properties": {
+      "expected_object_version": "读取工单详情时取得的 object.version；必须与服务端当前对象版本一致。它不同于修订的 state_version。",
+      "base_revision_id": "读取详情时的 object.current_revision_id，即当前已批准的正式版本 UUID；尚无正式版本时传 null。不能用正在编辑的草稿 UUID 代替。",
+      "replaces_revision_id": "本次编辑所替代的同一工单草稿、审核中或驳回修订 UUID。旧草稿/审核中版本会标记为 superseded，驳回版本保持原状态；正文和历史不被覆盖。",
+      "evidence": "新修订的完整字段证据绑定集合，不是差量更新。",
+      "change_reason": "本次修改的原因，写入创建修订的审计记录。",
+      "content": "新修订的完整工单正文。"
+    }
+  },
+  "UserCreate": {
+    "description": "由管理员创建内部账号；密码至少 12 位。新账号自动获得默认内部记录范围，发送人按用户名或显示姓名识别。",
+    "properties": {
+      "username": "唯一登录名；服务端会去除首尾空白。",
+      "display_name": "账号显示名称；服务端会去除首尾空白。",
+      "password": "新账号密码；本接口要求至少 12 个字符。该规则适用于创建账号接口，不代表部署时初始管理员环境配置的校验规则。",
+      "role": "admin=管理员，agent=业务操作人员，reviewer=审核人员；具体接口权限见接口说明。"
+    }
+  },
+  "UserUpdate": {
+    "description": "管理员更新系统账号；虽然使用 PATCH，但 username、display_name、role 仍须一并提交。",
+    "properties": {
+      "username": "更新后的唯一登录名；服务端会去除首尾空白。",
+      "display_name": "更新后的账号显示名称；服务端会去除首尾空白。",
+      "role": "更新后的账号角色：admin=管理员，agent=业务操作人员，reviewer=审核人员。",
+      "password": "需要重置时填写新密码，本接口要求至少 12 个字符；省略或 null 保留现有密码，空字符串不等于保留。"
+    }
+  },
+  "ValidationError": {
+    "description": "一项请求结构或类型校验错误。",
+    "properties": {
+      "loc": "错误位置路径，例如 [\"body\", \"content\", \"title\"]；可包含字段名或数组元素下标。",
+      "msg": "框架返回的错误说明文字，不保证为中文。",
+      "type": "供程序识别的校验错误类型，例如 missing、string_too_short。"
+    }
+  }
+}

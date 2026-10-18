@@ -1,0 +1,16 @@
+.inline-create > .search-select { flex:1; }
+.assignment-bar > .search-select { flex:1 1 260px; min-width:220px; font-size:12px; }
+.editor-form .form-row > .search-select { flex:1; }
+@media(max-width:780px) {
+  .inline-create { flex-wrap:wrap; }
+  .inline-create > .search-select { flex-basis:100%; }
+  .inline-create > button { margin-left:auto; }
+  .assignment-bar > .search-select { min-width:0; flex-basis:100%; }
+}
+
+@media (max-width:780px) {
+  .inline-create { gap:10px; align-items:stretch; }
+  .inline-create > .search-select,.editor-form .form-row > .search-select { width:100%; flex:1 1 100%; }
+  .inline-create > button { width:100%; min-height:44px; justify-content:center; }
+  .assignment-bar > .search-select { width:100%; max-width:none; }
+}

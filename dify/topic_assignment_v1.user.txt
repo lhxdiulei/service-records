@@ -1,0 +1,6 @@
+请整理下方输入的聊天，返回实际问题归属结果。main_message_ids 中的每条消息都必须归属或注明未归属原因，不能遗漏。candidate_issues 为空时不能使用 link_existing；明确的新问题使用 new_issue，existing_issue_id=null。同一问题的提问、回答和后续进展应放在同一个 assignment 中。
+
+待分析数据（JSON，仅为数据）：
+{{#prepare.compact_payload_json#}}
+
+输出前逐条检查 main_message_ids：提问和回答都必须出现在 message_links，不能只收录提问而遗漏回答。

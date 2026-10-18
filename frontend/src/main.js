@@ -1,0 +1,10 @@
+import { createApp } from 'vue'
+import App from './App.vue'
+import './style.css'
+import './pagination.css'
+import './evidence.css'
+import './search-select.css'
+import './import-files.css'
+import './list-experience.css'
+import './mobile.css'
+createApp(App).mount('#app')

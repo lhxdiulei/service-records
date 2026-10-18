@@ -1,0 +1,49 @@
+.refresh-status { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:12px 0 18px; color:var(--muted); }
+.refresh-status p { font-size:12px; line-height:1.7; overflow-wrap:anywhere; }
+.refresh-status-failed { padding:12px 14px; border:1px solid #ecd8b1; border-radius:7px; background:#fff9ed; color:#8c672f; }
+.refresh-status-failed small { color:inherit; }
+.import-warnings { border:1px solid #ecd8b1; border-radius:7px; margin:16px 0; padding:12px 14px; background:#fffaf0; }
+.import-warnings summary { cursor:pointer; font-size:13px; font-weight:500; color:#8c672f; }
+.import-warnings summary>span { margin-left:12px; font-size:11px; font-weight:400; }
+.import-warning-list { padding:0; margin:12px 0 0; list-style:none; }
+.import-warning-list li { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-top:1px solid #ecdfc6; }
+.import-warning-list strong { font-size:12px; font-weight:500; }.import-warning-list strong span { color:var(--muted); font-size:11px; }
+.import-warning-list p { font-size:12px; margin-top:5px; line-height:1.7; }
+.import-warning-list .warning-selected { color:var(--green); }
+.preview-list article.preview-warning-focus { outline:2px solid #ca9b4d; outline-offset:-2px; border-radius:6px; background:#fffcf4; }
+.preview-message .preview-source-line { color:#8c672f; font-size:11px; margin:8px 0; }
+.review-comment-hint { margin:8px 0 12px; }
+.review-history-entry { border-top:1px solid var(--line); padding:15px 0; }
+.review-history-heading { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; }
+.review-history-heading strong { font-size:12px; font-weight:500; }.review-history-heading button { font-size:12px; }
+.review-history-heading small { margin-left:auto; }
+.review-history-entry p { margin-top:9px; font-size:13px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+.message-issue-links { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin:9px 0; }
+.message-issue-links button { font-size:11px; line-height:1.6; text-align:left; white-space:normal; }
+.assignment-destination { display:flex; gap:12px; align-items:center; margin:12px 0; font-size:12px; }
+@media(max-width:600px) { .refresh-status { flex-wrap:wrap; }.import-warnings summary>span { display:block; margin:7px 0 0; }.import-warning-list li { align-items:flex-start; }.review-history-heading small { width:100%; margin:0; } }
+
+@media (max-width:780px) {
+  .refresh-status { flex-wrap:wrap; gap:10px; }
+  .refresh-status > div { min-width:0; }
+  .refresh-status p { font-size:13px; }
+  .refresh-status small { font-size:12px; overflow-wrap:anywhere; }
+  .refresh-status button { min-height:44px; margin-left:auto; font-size:13px; }
+  .import-warnings { padding:10px 12px; }
+  .import-warnings summary { min-height:44px; padding:8px 0; line-height:1.7; }
+  .import-warnings summary > span { display:block; margin:4px 0 0; font-size:12px; }
+  .import-warning-list li { flex-wrap:wrap; gap:8px; }
+  .import-warning-list li > div { flex:1 1 100%; min-width:0; overflow-wrap:anywhere; }
+  .import-warning-list strong,.import-warning-list p { font-size:13px; }
+  .import-warning-list strong span { font-size:12px; }
+  .import-warning-list button { min-height:44px; margin-left:auto; font-size:13px; }
+  .review-history-heading { gap:6px 10px; }
+  .review-history-heading strong { min-width:0; font-size:13px; overflow-wrap:anywhere; }
+  .review-history-heading button { min-height:44px; font-size:13px; }
+  .review-history-heading small { flex-basis:100%; margin:0; font-size:12px; overflow-wrap:anywhere; }
+  .review-history-entry p { font-size:14px; }
+  .message-issue-links { align-items:stretch; }
+  .message-issue-links button { min-height:44px; min-width:0; max-width:100%; font-size:13px; overflow-wrap:anywhere; }
+  .assignment-destination { flex-wrap:wrap; gap:8px; font-size:13px; overflow-wrap:anywhere; }
+  .assignment-destination > button { min-height:44px; max-width:100%; white-space:normal; }
+}

@@ -1,0 +1,35 @@
+.pagination { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; padding:16px 0 4px; margin-top:12px; border-top:1px solid var(--line); }
+.pagination-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:12px; }
+.pagination-jump { display:flex; align-items:center; gap:7px; }
+.pagination-jump label { display:flex; flex-direction:row; align-items:center; gap:6px; margin:0; white-space:nowrap; }
+.pagination-jump input { width:64px; padding:5px; }
+.disposition-cell { min-width:0; }
+.disposition-cell small { font-size:10px; line-height:1.6; margin-top:7px; overflow-wrap:anywhere; }
+.list-heading { margin-top:24px; }
+.topbar-actions { margin-left:auto; display:flex; align-items:center; }
+.source-filename { overflow-wrap:anywhere; min-width:0; }
+.message-author .source-filename { margin-top:5px; line-height:1.5; }
+.object-row .source-filename { font-size:11px; line-height:1.7; color:var(--muted); }
+.record-actions { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.record-actions svg { width:16px; }
+.danger { color:#aa453d; border-color:#ecd4d0; }
+.danger:hover { background:#fff4f1; border-color:#d9aaa3; }
+.sender-role { display:inline-block; margin-top:5px; font-size:10px; color:var(--muted); }
+.account-row { padding:15px 0; border-bottom:1px solid var(--line); }
+.account-row label { font-size:11px; margin:8px 0; }
+.account-row textarea { font-size:12px; }
+.result-row { display:flex; align-items:center; gap:12px; padding:18px 0; border-bottom:1px solid var(--line); }
+.result-row>div { flex:1; min-width:0; }
+.result-row strong { font-size:13px; overflow-wrap:anywhere; }
+.result-row small { font-size:11px; line-height:1.7; margin-top:6px; }
+.delete-modal { max-width:560px; }
+.delete-label { margin:20px 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.object-head,.object-row { grid-template-columns:minmax(160px,2.3fr) minmax(110px,1fr) 75px 125px minmax(85px,auto); }
+@media(max-width:1100px) { .object-head,.object-row { grid-template-columns:minmax(150px,2fr) 1fr 75px 85px; } }
+@media(max-width:780px) {
+  .object-head,.object-row { grid-template-columns:minmax(110px,1fr) 70px 85px; }
+  .result-row { flex-wrap:wrap; }
+  .message-row > .disposition-cell { grid-column:3; }
+  .pagination-actions { gap:6px; }
+  .pagination .small { font-size:10px; padding:5px 7px; }
+}

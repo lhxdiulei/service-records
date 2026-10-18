@@ -1,0 +1,6 @@
+# 源码使用 LF，避免不同操作系统的自动换行转换产生无关差异。
+* text=auto eol=lf
+
+# 已应用迁移和分词器有字节校验和，必须按原始内容保存及检出。
+backend/migrations/*.sql -text
+backend/tokenizers/qwen3-vl.json -text

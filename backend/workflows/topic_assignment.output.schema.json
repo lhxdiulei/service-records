@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "topic_assignment.output",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "assignments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "local_topic_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "new_issue",
+              "link_existing",
+              "needs_review"
+            ]
+          },
+          "existing_issue_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "candidate_title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message_links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "message_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "relation": {
+                  "type": "string",
+                  "enum": [
+                    "question",
+                    "answer",
+                    "progress",
+                    "correction",
+                    "context"
+                  ]
+                }
+              },
+              "required": [
+                "message_id",
+                "relation"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "decision_note": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "risk_flags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "missing_nontext",
+                "missing_history",
+                "ambiguous_reference",
+                "contradictory_answers",
+                "unverified_role",
+                "phone_context_missing",
+                "context_truncated",
+                "time_order_unknown"
+              ]
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "local_topic_key",
+          "decision",
+          "existing_issue_id",
+          "candidate_title",
+          "message_links",
+          "decision_note",
+          "risk_flags"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "unassigned_messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "nontext_only",
+              "chitchat",
+              "malformed",
+              "ambiguous",
+              "system_message"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "message_id",
+          "reason",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    }
+  },
+  "required": [
+    "schema_version",
+    "assignments",
+    "unassigned_messages"
+  ],
+  "additionalProperties": false
+}

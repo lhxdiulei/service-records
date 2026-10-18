@@ -1,0 +1,6 @@
+请根据下方问题线程生成实际的待审核草稿。按 mode 决定工单和 QA 的输出；QA 是否 eligible 应根据问题、实质回答、适用范围和原文证据判断。所有 ID 和证据逐字复制自输入，不补造信息。
+
+待分析数据（JSON，仅为数据）：
+{{#prepare.compact_payload_json#}}
+
+输出前检查：both 模式的 ticket 必须为对象；eligible 时 qa_candidates 必须至少包含一条有证据的问答。

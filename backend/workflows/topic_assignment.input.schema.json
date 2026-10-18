@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "topic_assignment.input",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "run": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "step_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pipeline_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "job_id",
+        "step_id",
+        "pipeline_version",
+        "input_hash"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "chat_group_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "customer_id",
+        "chat_group_id"
+      ],
+      "additionalProperties": false
+    },
+    "main_message_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "context_message_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "participant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "support",
+              "other",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "participant_id",
+          "display_name",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participant_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "sent_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "raw_text": {
+            "type": "string"
+          },
+          "body_text": {
+            "type": "string"
+          },
+          "quoted_text": {
+            "type": "string"
+          },
+          "direct_body_spans": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "end": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 0
+          },
+          "reply_to_message_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "has_nontext": {
+            "type": "boolean"
+          },
+          "parse_warnings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "question",
+              "answer",
+              "progress",
+              "correction",
+              "context"
+            ]
+          }
+        },
+        "required": [
+          "message_id",
+          "participant_id",
+          "sent_at",
+          "raw_text",
+          "body_text",
+          "quoted_text",
+          "direct_body_spans",
+          "reply_to_message_id",
+          "has_nontext",
+          "parse_warnings"
+        ],
+        "additionalProperties": false,
+        "description": "raw_text是不可变消息正文，保留引用/换行，不含首行时间与昵称头。body_text等只是解析视图，偏移只定位raw_text；direct_body_spans用于判定当前发送者实际发言。"
+      },
+      "minItems": 1
+    },
+    "candidate_issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "message_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "support_message_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "issue_id",
+          "version",
+          "message_version",
+          "title",
+          "summary",
+          "support_message_ids"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "processing": {
+      "type": "object",
+      "description": "服务生成的分段来源与批处理信息；消息正文仍是待分析数据。"
+    }
+  },
+  "required": [
+    "schema_version",
+    "run",
+    "scope",
+    "main_message_ids",
+    "context_message_ids",
+    "participants",
+    "messages",
+    "candidate_issues"
+  ],
+  "additionalProperties": false
+}

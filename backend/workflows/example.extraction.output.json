@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0",
+  "ticket": {
+    "title": "DemoRecord 截止日期字段咨询",
+    "first_question_message_id": "40000000-0000-4000-8000-000000000001",
+    "first_visible_message_id": "40000000-0000-4000-8000-000000000001",
+    "date_basis": "first_question",
+    "problem": "示例表 DemoRecord 的截止日期取哪个字段？",
+    "processing_summary": "客服说明 EndDate 的含义。",
+    "current_conclusion": "DemoRecord 的 EndDate 表示截止日期。",
+    "proposed_status": "answered",
+    "status_evidence": [
+      {
+        "message_id": "40000000-0000-4000-8000-000000000002",
+        "exact_excerpt": "DemoRecord 的 EndDate 表示截止日期。",
+        "occurrence": 1
+      }
+    ],
+    "claims": [
+      {
+        "claim_key": "c1",
+        "text": "DemoRecord 的 EndDate 表示截止日期。",
+        "evidence": [
+          {
+            "message_id": "40000000-0000-4000-8000-000000000002",
+            "exact_excerpt": "DemoRecord 的 EndDate 表示截止日期。",
+            "occurrence": 1
+          }
+        ]
+      }
+    ],
+    "timeline_events": [
+      {
+        "event_key": "e1",
+        "occurred_message_id": "40000000-0000-4000-8000-000000000002",
+        "event_kind": "reply",
+        "summary": "DemoRecord 的 EndDate 表示截止日期。",
+        "evidence": [
+          {
+            "message_id": "40000000-0000-4000-8000-000000000002",
+            "exact_excerpt": "DemoRecord 的 EndDate 表示截止日期。",
+            "occurrence": 1
+          }
+        ]
+      }
+    ],
+    "next_actions": [],
+    "risk_flags": []
+  },
+  "qa_candidates": [
+    {
+      "candidate_key": "qa_1",
+      "action": "create",
+      "existing_qa_id": null,
+      "question": "示例表 DemoRecord 的截止日期取哪个字段？",
+      "answer": "DemoRecord 的 EndDate 表示截止日期。",
+      "applicability": "仅适用于示例表 DemoRecord，依据本次文本回复。",
+      "question_evidence": [
+        {
+          "message_id": "40000000-0000-4000-8000-000000000001",
+          "exact_excerpt": "示例表 DemoRecord 的截止日期取哪个字段？",
+          "occurrence": 1
+        }
+      ],
+      "answer_claims": [
+        {
+          "claim_key": "a1",
+          "text": "DemoRecord 的 EndDate 表示截止日期。",
+          "evidence": [
+            {
+              "message_id": "40000000-0000-4000-8000-000000000002",
+              "exact_excerpt": "DemoRecord 的 EndDate 表示截止日期。",
+              "occurrence": 1
+            }
+          ]
+        }
+      ],
+      "contributors": [
+        {
+          "participant_id": "30000000-0000-4000-8000-000000000002",
+          "contribution": "提供字段解释",
+          "evidence": [
+            {
+              "message_id": "40000000-0000-4000-8000-000000000002",
+              "exact_excerpt": "DemoRecord 的 EndDate 表示截止日期。",
+              "occurrence": 1
+            }
+          ]
+        }
+      ],
+      "risk_flags": []
+    }
+  ],
+  "qa_assessment": {
+    "eligibility": "eligible",
+    "reason": "存在明确文字提问和实质回答。",
+    "unresolved_questions": []
+  },
+  "risk_flags": []
+}

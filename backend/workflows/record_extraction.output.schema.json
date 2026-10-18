@@ -1,0 +1,562 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "record_extraction.output",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "ticket": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "first_question_message_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "first_visible_message_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "date_basis": {
+              "type": "string",
+              "enum": [
+                "first_question",
+                "first_visible_context"
+              ]
+            },
+            "problem": {
+              "type": "string",
+              "minLength": 1
+            },
+            "processing_summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "current_conclusion": {
+              "type": "string"
+            },
+            "proposed_status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "in_progress",
+                "waiting_customer",
+                "waiting_internal",
+                "answered",
+                "resolved",
+                "cancelled",
+                "unknown"
+              ]
+            },
+            "status_evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "message_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "exact_excerpt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "occurrence": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "message_id",
+                  "exact_excerpt",
+                  "occurrence"
+                ],
+                "additionalProperties": false,
+                "description": "原文定位请求；excerpt必须逐字匹配raw_text，occurrence为该字串按起点升序的第几个匹配（含重叠），1起。后端重建Unicode码点[start,end)证据，拒绝不存在的匹配。"
+              },
+              "minItems": 0
+            },
+            "claims": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "claim_key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "message_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "exact_excerpt": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "occurrence": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "message_id",
+                        "exact_excerpt",
+                        "occurrence"
+                      ],
+                      "additionalProperties": false,
+                      "description": "原文定位请求；excerpt必须逐字匹配raw_text，occurrence为该字串按起点升序的第几个匹配（含重叠），1起。后端重建Unicode码点[start,end)证据，拒绝不存在的匹配。"
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "claim_key",
+                  "text",
+                  "evidence"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "timeline_events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "event_key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "occurred_message_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "event_kind": {
+                    "type": "string",
+                    "enum": [
+                      "question",
+                      "reply",
+                      "follow_up",
+                      "request_submitted",
+                      "correction",
+                      "resolution",
+                      "cancellation"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "message_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "exact_excerpt": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "occurrence": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "message_id",
+                        "exact_excerpt",
+                        "occurrence"
+                      ],
+                      "additionalProperties": false,
+                      "description": "原文定位请求；excerpt必须逐字匹配raw_text，occurrence为该字串按起点升序的第几个匹配（含重叠），1起。后端重建Unicode码点[start,end)证据，拒绝不存在的匹配。"
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "event_key",
+                  "occurred_message_id",
+                  "event_kind",
+                  "summary",
+                  "evidence"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            },
+            "next_actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "enum": [
+                      "explicit_in_chat",
+                      "reviewer_suggestion"
+                    ]
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "message_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "exact_excerpt": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "occurrence": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "message_id",
+                        "exact_excerpt",
+                        "occurrence"
+                      ],
+                      "additionalProperties": false,
+                      "description": "原文定位请求；excerpt必须逐字匹配raw_text，occurrence为该字串按起点升序的第几个匹配（含重叠），1起。后端重建Unicode码点[start,end)证据，拒绝不存在的匹配。"
+                    },
+                    "minItems": 0
+                  }
+                },
+                "required": [
+                  "text",
+                  "basis",
+                  "evidence"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            },
+            "risk_flags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "missing_nontext",
+                  "missing_history",
+                  "ambiguous_reference",
+                  "contradictory_answers",
+                  "unverified_role",
+                  "phone_context_missing",
+                  "context_truncated",
+                  "time_order_unknown"
+                ]
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "title",
+            "first_question_message_id",
+            "first_visible_message_id",
+            "date_basis",
+            "problem",
+            "processing_summary",
+            "current_conclusion",
+            "proposed_status",
+            "status_evidence",
+            "claims",
+            "timeline_events",
+            "next_actions",
+            "risk_flags"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "qa_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "candidate_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "create",
+              "propose_revision"
+            ]
+          },
+          "existing_qa_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "answer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "applicability": {
+            "type": "string",
+            "minLength": 1
+          },
+          "question_evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "message_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "exact_excerpt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "occurrence": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "message_id",
+                "exact_excerpt",
+                "occurrence"
+              ],
+              "additionalProperties": false,
+              "description": "原文定位请求；excerpt必须逐字匹配raw_text，occurrence为该字串按起点升序的第几个匹配（含重叠），1起。后端重建Unicode码点[start,end)证据，拒绝不存在的匹配。"
+            },
+            "minItems": 1
+          },
+          "answer_claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "claim_key": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "message_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "exact_excerpt": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "occurrence": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    },
+                    "required": [
+                      "message_id",
+                      "exact_excerpt",
+                      "occurrence"
+                    ],
+                    "additionalProperties": false,
+                    "description": "原文定位请求；excerpt必须逐字匹配raw_text，occurrence为该字串按起点升序的第几个匹配（含重叠），1起。后端重建Unicode码点[start,end)证据，拒绝不存在的匹配。"
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "claim_key",
+                "text",
+                "evidence"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "contributors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "participant_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "contribution": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "message_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "exact_excerpt": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "occurrence": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    },
+                    "required": [
+                      "message_id",
+                      "exact_excerpt",
+                      "occurrence"
+                    ],
+                    "additionalProperties": false,
+                    "description": "原文定位请求；excerpt必须逐字匹配raw_text，occurrence为该字串按起点升序的第几个匹配（含重叠），1起。后端重建Unicode码点[start,end)证据，拒绝不存在的匹配。"
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "participant_id",
+                "contribution",
+                "evidence"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "risk_flags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "missing_nontext",
+                "missing_history",
+                "ambiguous_reference",
+                "contradictory_answers",
+                "unverified_role",
+                "phone_context_missing",
+                "context_truncated",
+                "time_order_unknown"
+              ]
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "candidate_key",
+          "action",
+          "existing_qa_id",
+          "question",
+          "answer",
+          "applicability",
+          "question_evidence",
+          "answer_claims",
+          "contributors",
+          "risk_flags"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "qa_assessment": {
+      "type": "object",
+      "properties": {
+        "eligibility": {
+          "type": "string",
+          "enum": [
+            "eligible",
+            "no_explicit_answer",
+            "missing_context",
+            "conflicting",
+            "instance_only",
+            "not_requested"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unresolved_questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "eligibility",
+        "reason",
+        "unresolved_questions"
+      ],
+      "additionalProperties": false
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "missing_nontext",
+          "missing_history",
+          "ambiguous_reference",
+          "contradictory_answers",
+          "unverified_role",
+          "phone_context_missing",
+          "context_truncated",
+          "time_order_unknown"
+        ]
+      },
+      "minItems": 0
+    }
+  },
+  "required": [
+    "schema_version",
+    "ticket",
+    "qa_candidates",
+    "qa_assessment",
+    "risk_flags"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,134 @@
+name: service-records
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  environment: &environment
+    DATABASE_URL: postgresql://records_app:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}@postgres:5432/records
+    REDIS_URL: redis://redis:6379/0
+    DATA_DIR: /data
+    APP_ORIGINS: ${APP_ORIGINS:-http://localhost:8088,http://127.0.0.1:8088}
+    COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+    ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+    AI_CONTEXT_TOKENS: ${AI_CONTEXT_TOKENS:-8192}
+    AI_LOCAL_MODEL: ${AI_LOCAL_MODEL:-qwen3-vl:4b-instruct-q4_K_M}
+    AI_LOCAL_TOKENIZER_KIND: ${AI_LOCAL_TOKENIZER_KIND:-hf_json}
+    AI_LOCAL_TOKENIZER_FILE: ${AI_LOCAL_TOKENIZER_FILE:-/srv/tokenizers/qwen3-vl.json}
+    AI_LOCAL_CONTEXT_TOKENS: ${AI_LOCAL_CONTEXT_TOKENS:-${AI_CONTEXT_TOKENS:-8192}}
+    AI_LOCAL_TOPIC_OUTPUT_TOKENS: ${AI_LOCAL_TOPIC_OUTPUT_TOKENS:-1800}
+    AI_LOCAL_RECORD_OUTPUT_TOKENS: ${AI_LOCAL_RECORD_OUTPUT_TOKENS:-2600}
+    AI_EXTERNAL_MODEL: ${AI_EXTERNAL_MODEL:-operator_configured}
+    AI_EXTERNAL_TOKENIZER_KIND: ${AI_EXTERNAL_TOKENIZER_KIND:-utf8_upper_bound}
+    AI_EXTERNAL_TOKENIZER_FILE: ${AI_EXTERNAL_TOKENIZER_FILE:-/srv/tokenizers/qwen3-vl.json}
+    AI_EXTERNAL_CONTEXT_TOKENS: ${AI_EXTERNAL_CONTEXT_TOKENS:-${AI_CONTEXT_TOKENS:-8192}}
+    AI_EXTERNAL_TOPIC_OUTPUT_TOKENS: ${AI_EXTERNAL_TOPIC_OUTPUT_TOKENS:-1800}
+    AI_EXTERNAL_RECORD_OUTPUT_TOKENS: ${AI_EXTERNAL_RECORD_OUTPUT_TOKENS:-2600}
+    DIFY_LOCAL_BASE_URL: ${DIFY_LOCAL_BASE_URL:-http://host.docker.internal:8880/v1}
+    DIFY_LOCAL_TOPIC_KEY: ${DIFY_LOCAL_TOPIC_KEY:-}
+    DIFY_LOCAL_RECORD_KEY: ${DIFY_LOCAL_RECORD_KEY:-}
+    DIFY_EXTERNAL_BASE_URL: ${DIFY_EXTERNAL_BASE_URL:-https://api.dify.ai/v1}
+    DIFY_EXTERNAL_TOPIC_KEY: ${DIFY_EXTERNAL_TOPIC_KEY:-}
+    DIFY_EXTERNAL_RECORD_KEY: ${DIFY_EXTERNAL_RECORD_KEY:-}
+  volumes:
+    - records_files:/data
+  extra_hosts:
+    - host.docker.internal:host-gateway
+  restart: unless-stopped
+  mem_limit: 512m
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: records
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: records
+    volumes:
+      - records_db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U records -d records]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    mem_limit: 384m
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 96mb, --maxmemory-policy, noeviction]
+    volumes:
+      - records_redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    mem_limit: 160m
+  migrate:
+    <<: *backend
+    command: [python, -m, app.migrate]
+    environment:
+      <<: *environment
+      DATABASE_URL: postgresql://records:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/records
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    <<: *backend
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8000', --no-proxy-headers]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  worker:
+    <<: *backend
+    command: [celery, -A, app.worker.celery, worker, --loglevel=info, --concurrency=2]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+  beat:
+    <<: *backend
+    command: [celery, -A, app.worker.celery, beat, --loglevel=info, --schedule=/tmp/celerybeat-schedule]
+    mem_limit: 192m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+  web:
+    build:
+      context: frontend
+    ports:
+      - '0.0.0.0:${WEB_PORT:-8088}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 96m
+  tests:
+    <<: *backend
+    profiles: [test]
+    environment:
+      <<: *environment
+      DATABASE_URL: postgresql://records:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/records
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
+    volumes:
+      - ./backend/tests:/srv/tests:ro
+    command: [python, -m, unittest, discover, -s, tests, -v]
+    restart: 'no'
+
+volumes:
+  records_db:
+  records_files:
+  records_redis:

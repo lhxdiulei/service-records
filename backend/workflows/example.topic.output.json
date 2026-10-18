@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "assignments": [
+    {
+      "local_topic_key": "topic_1",
+      "decision": "new_issue",
+      "existing_issue_id": null,
+      "candidate_title": "DemoRecord 截止日期字段咨询",
+      "message_links": [
+        {
+          "message_id": "40000000-0000-4000-8000-000000000001",
+          "relation": "question"
+        },
+        {
+          "message_id": "40000000-0000-4000-8000-000000000002",
+          "relation": "answer"
+        }
+      ],
+      "decision_note": "明确回复同一字段问题，跨日但主题一致。",
+      "risk_flags": []
+    }
+  ],
+  "unassigned_messages": []
+}
